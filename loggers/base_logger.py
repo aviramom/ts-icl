@@ -84,9 +84,16 @@ class BaseLogger(ABC):
         """Adds a new logger item."""
         self.log_name_params(name, params)
 
+    def log_metrics(self, metrics: Dict[str, Any]):
+        for k, v in metrics.items():
+            self.log(k, v)
+
+    def close(self):
+        self.stop()
+
     def log_audio(self, name : str, path : str):
         pass
-    
+
     def upload(self, name: str, path: str):
         pass
 

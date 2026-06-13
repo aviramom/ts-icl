@@ -55,6 +55,14 @@ class CompositeLogger(BaseLogger):
             for logger in self.loggers:
                 logger.log_name_params(name, params)
 
+    def log_metrics(self, metrics: Dict[str, Any]):
+        if self.rank == 0:
+            for logger in self.loggers:
+                logger.log_metrics(metrics)
+
+    def close(self):
+        self.stop()
+
     def log_audio(self, name : str, path : str):
         if self.rank == 0:
             for logger in self.loggers:

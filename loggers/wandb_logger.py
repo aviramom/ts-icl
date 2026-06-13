@@ -94,6 +94,13 @@ class WandbLogger(BaseLogger):
         if self.rank == 0:
             self.wandb.log({name: data})
 
+    def log_metrics(self, metrics: Dict[str, Any]):
+        if self.rank == 0:
+            self.wandb.log(metrics)
+
+    def close(self):
+        self.stop()
+
     def _log_fig(self, name: str, fig: Any):
         if self.rank == 0:
             if isinstance(fig, np.ndarray):

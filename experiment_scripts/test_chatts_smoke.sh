@@ -7,8 +7,8 @@
 
 #SBATCH --partition main
 #SBATCH --time 0-00:20:00
-#SBATCH --job-name chatts_vllm_smoke
-#SBATCH --output logs_terminal/chatts_vllm_smoke_%J.out
+#SBATCH --job-name chatts_hf_smoke
+#SBATCH --output logs_terminal/chatts_hf_smoke_%J.out
 #SBATCH --gpus=rtx_4090:1
 #SBATCH --mem=60G
 
@@ -29,7 +29,7 @@ python -c "import torch; print('Success! Torch version:', torch.__version__)"
 
 python run_icl.py \
   --task_id icl_ucr_GunPoint \
-  --method bytedance-research/ChatTS-8B-vllm \
+  --method bytedance-research/ChatTS-8B \
   --num_shots 1 \
   --picking_strategy random \
   --num_samples 20 \
