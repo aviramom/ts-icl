@@ -1,0 +1,10 @@
+The traffic data are collected with the loop sensor installed on ramp for the 101 North freeway in Los Angeles. This location is close to Dodgers Stadium; therefore the traffic is affected by volumne of visitors to the stadium. 
+The classes are days of the week.
+
+- Class 1: Sunday
+- Class 2: Monday
+- Class 3: Tuesday
+- Class 4: Wednesday
+- Class 5: Thursday 
+- Class 6: Friday
+- Class 7: Saturday 

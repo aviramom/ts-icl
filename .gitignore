@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# SLURM logs
+logs_terminal/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Env / secrets
+.env
+*.env
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude internal
+.claude/
+CLAUDE.md

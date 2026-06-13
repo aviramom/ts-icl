@@ -1,0 +1,10 @@
+The data set covers 20 different bottle types and four levels of alcohol: 35%, 38%, 40% and 45%. Each series is a spectrograph of 1751 observations. 
+
+This data set is an example of when it is wrong to merge and resample, because the train/test split are constructed so that the same bottle type is never in both train and test sets. 
+
+There are 4 classes corresponding to four alcohol levels. 
+
+- Class 1: E35
+- Class 2: E38
+- Class 3: E40
+- Class 4: E45

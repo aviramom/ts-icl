@@ -1,0 +1,13 @@
+The City of Melbourne, Australia has developed an automated pedestrian counting system to better understand pedestrian activity within the municipality, such as how people use different city locations at different times of the day. The data analysis can facilitate decision making and urban planning for the future. 
+Data are pedestrian count for 12 months of the year 2017. Classes correspond to locations of sensor placement.
+
+- Class 1: Bourke Street Mall (North)
+- Class 2: Southern Cross Station
+- Class 3: New Quay
+- Class 4: Flinders St Station Underpass
+- Class 5: QV Market-Elizabeth (West)
+- Class 6: Convention/Exhibition Centre
+- Class 7: Chinatown-Swanston St (North)
+- Class 8: Webb Bridge
+- Class 9: Tin Alley-Swanston St (West)
+- Class 10: Southbank

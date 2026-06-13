@@ -1,0 +1,8 @@
+The data contain 70 rock examples from the ASTER spectral library [1]. Each series is rock spectral reflectance as a function of wavelength in micron, not time.
+
+Classes correspond to type of rocks.
+
+- Class 1: marfic 
+- Class 2: quartzite
+- Class 3: marble 
+- Class 4: schist 

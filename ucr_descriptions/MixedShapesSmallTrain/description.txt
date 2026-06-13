@@ -1,0 +1,8 @@
+The data consist of "pseudo" time series obtained by converting two-dimensional shapes into one-dimensional time series 
+There are five classes corresponding to different shapes.
+
+- Class 1: Arrowhead
+- Class 2: Butterfly
+- Class 3: Fish
+- Class 4: Seashell
+- Class 5: Shield

@@ -1,0 +1,6 @@
+The data were originally intended for testing whether a clustering algorithm is able to extract smooth subspaces for clustering time series data [1]. 
+
+There are 3 classes corresponding to which cluster the time series belong to. Each time series contain a continuous subspace spanning over 5 continuous time stamps. 
+- For cluster 1, it is from time stamp 1-5 
+- For cluster 2, it is from time stamp 6-10
+- For cluster 3, it is from time stamp 11-15. 

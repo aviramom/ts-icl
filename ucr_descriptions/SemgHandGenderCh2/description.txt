@@ -1,0 +1,5 @@
+The data are surface electromyography (sEMG) signal, which captures electric activity of groups of muscle at rest or during activity. Data collection involves five healthy subjects conducting six movements of hand grasps. Collection device is Delsys' 2-channel EMG system.
+We use data of channel 2 only. Classes correspond to genders. 
+
+- Class 1: Female
+- Class 2: Male

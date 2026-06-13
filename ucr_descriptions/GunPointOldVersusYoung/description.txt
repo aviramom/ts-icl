@@ -1,0 +1,12 @@
+We record two scenarios, Gun and Point (also known as Gun and NoGun). In each scenario, the actors aim at a eye-level target. The difference between Gun and Point is that for the Gun scenario, the actors hold a gun, and in the Point scenario, the actors point with just their fingers. A complete Gun action involves the actor moves hand from an initial rest position, points the gun at target, puts gun back to waist holster and then brings the free hand back to the initial rest position. Each complete action conforms to a five-second cycle. With 30fps, this translates into 150 frames per action. We extract the centroid of the hand from each frame and use its x-axis coordinate to form a time series.
+Let us denote:
+- G: Gun
+- P: Point
+- M: Male
+- F: Female
+- 03: The year 2003
+- 18: The year 2018
+
+The task is to classify the older and younger version of the actors. There are 4 flavors of each class.
+- Class 1: Young (FG03, MG03, FP03, MP03)
+- Class 2: Old (FG18, MG18, FP18, MP18)

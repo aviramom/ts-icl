@@ -1,0 +1,5 @@
+UMD is a synthetic data set with 3 classes: one class is characterized by a small up bell arising at the initial or final period (Up); one does not have any bell (Middle); one has a small down bell arising at the initial or final period (Down).
+
+- Class 1: Up
+- Class 2: Middle
+- Class 3: Down
