@@ -31,13 +31,16 @@ class ICLUCRDataset(Dataset):
         """Build ICL prompts from a UCR train/test split.
 
         Args:
-            train_dataset: UCRDataset (train split)
-            test_dataset:  UCRDataset (test split)
-            task_id:       e.g. "icl_ucr_GunPoint"
+            train_dataset: UCRDataset or TimeSeriesExamDataset (train split)
+            test_dataset:  UCRDataset or TimeSeriesExamDataset (test split)
+            task_id:       e.g. "icl_ucr_GunPoint" or "icl_tse_3"
             args:          parsed CLI args (picking_strategy, num_shots, random_seed,
                            use_label_desc, desc_dir, num_samples)
         """
         self = cls()
+
+        label_names = getattr(train_dataset, "label_names", None)
+        is_two_series = getattr(train_dataset, "is_two_series", False)
 
         examples = get_support_set(
             train_dataset,
@@ -46,9 +49,19 @@ class ICLUCRDataset(Dataset):
             seed=getattr(args, "random_seed", None),
         )
 
+        # Map integer labels -> display strings
+        if label_names is not None:
+            examples = [(ts_list, label_names[label]) for ts_list, label in examples]
+        else:
+            examples = [(ts_list, str(label)) for ts_list, label in examples]
+
         description = self._load_description(train_dataset, task_id, args)
         options = sorted(set(ex[1] for ex in examples))
-        input_prompt, support_ts_list = self._build_input(examples, description, options)
+
+        if is_two_series:
+            input_prompt, support_ts_list = self._build_input_two_series(examples, description, options)
+        else:
+            input_prompt, support_ts_list = self._build_input(examples, description, options)
 
         n = len(test_dataset)
         if getattr(args, "num_samples", None) not in (None, float("inf"), -1):
@@ -62,20 +75,30 @@ class ICLUCRDataset(Dataset):
         input_mode = getattr(args, "input_mode", "combined")
 
         for i in indices:
-            ts_i, label_i = test_dataset[i]
-            ts_query = ts_i.tolist() if hasattr(ts_i, "tolist") else list(ts_i)
+            item = test_dataset[i]
+            label_i = item[1]
             label_val = label_i.item() if hasattr(label_i, "item") else label_i
+            output_str = label_names[label_val] if label_names is not None else str(label_val)
 
-            current_ts = support_ts_list + [ts_query]
+            if is_two_series:
+                ts_pair = item[0]  # (ts1_tensor, ts2_tensor)
+                ts1_q = ts_pair[0].tolist() if hasattr(ts_pair[0], "tolist") else list(ts_pair[0])
+                ts2_q = ts_pair[1].tolist() if hasattr(ts_pair[1], "tolist") else list(ts_pair[1])
+                current_ts = support_ts_list + [ts1_q, ts2_q]
+            else:
+                ts_i = item[0]
+                ts_query = ts_i.tolist() if hasattr(ts_i, "tolist") else list(ts_i)
+                current_ts = support_ts_list + [ts_query]
+
             if input_mode == "separate":
-                current_text = input_prompt  # placeholders left intact for model
+                current_text = input_prompt
             else:
                 current_text = self._combine_ts_text(input_prompt, current_ts)
             mean, std = self._compute_mean_std(current_ts)
 
             self._add_sample(
                 input_text=current_text,
-                output_text=str(label_val),
+                output_text=output_str,
                 input_ts=current_ts,
                 task_id=task_id,
                 options=options,
@@ -107,6 +130,9 @@ class ICLUCRDataset(Dataset):
     def _load_description(train_dataset, task_id: str, args) -> str:
         if not getattr(args, "use_label_desc", 0):
             return ""
+        # TSE datasets store question text in self.desc directly
+        if task_id.startswith("icl_tse_"):
+            return getattr(train_dataset, "desc", "") or ""
         name = task_id.replace("ICL_UCR_", "").replace("icl_ucr_", "")
         desc_dir = getattr(args, "desc_dir", "ucr_descriptions")
         desc_path = os.path.join(desc_dir, name, "description.txt")
@@ -123,6 +149,30 @@ class ICLUCRDataset(Dataset):
             text += f"\nExample {i+1} Time Series: <ts><ts/>\nLabel: {label}\n"
             ts_list.append(ts[0])
         target = "\n--- TARGET ---\n" + "New Time Series: <ts><ts/>\n"
+        return icl_classification_format(desc, text, target, opts), ts_list
+
+    @staticmethod
+    def _build_input_two_series(examples, desc: str, opts: list):
+        """Like _build_input but emits two <ts><ts/> placeholders per example."""
+        text = "\n--- EXAMPLES ---\n"
+        ts_list = []
+        for i, (ts, label) in enumerate(examples):
+            # ts[0] = (ts1_tensor, ts2_tensor) tuple from the picking strategy
+            ts_pair = ts[0]
+            ts1 = ts_pair[0].tolist() if hasattr(ts_pair[0], "tolist") else list(ts_pair[0])
+            ts2 = ts_pair[1].tolist() if hasattr(ts_pair[1], "tolist") else list(ts_pair[1])
+            text += (
+                f"\nExample {i+1} Time Series 1: <ts><ts/>\n"
+                f"Example {i+1} Time Series 2: <ts><ts/>\n"
+                f"Label: {label}\n"
+            )
+            ts_list.append(ts1)
+            ts_list.append(ts2)
+        target = (
+            "\n--- TARGET ---\n"
+            "New Time Series 1: <ts><ts/>\n"
+            "New Time Series 2: <ts><ts/>\n"
+        )
         return icl_classification_format(desc, text, target, opts), ts_list
 
     @staticmethod

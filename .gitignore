@@ -11,6 +11,17 @@ build/
 
 # SLURM logs
 logs_terminal/
+slurm-*.out
+
+# Experiment outputs and W&B artifacts
+outputs/
+wandb/
+
+# Generated data (run scripts/generate_tse_augmented.py to recreate)
+qa_dataset_augmented.json
+
+# Third-party repos (should be a git submodule — ignored for now)
+third_party/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/

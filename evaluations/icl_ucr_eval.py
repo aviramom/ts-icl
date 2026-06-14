@@ -33,8 +33,8 @@ def _parse_options(prompt: str) -> list:
 
 def run_evaluation_icl_ucr(model, dataloader=None, args=None):
 
-    if "ucr" not in args.task_id.lower():
-        raise ValueError("Task identifier: task_id must be 'UCR'")
+    if "ucr" not in args.task_id.lower() and "tse" not in args.task_id.lower():
+        raise ValueError("task_id must contain 'ucr' or 'tse'")
     
     accuracy_scores = []
     gold_answers = []

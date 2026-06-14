@@ -16,6 +16,7 @@ load_dotenv()
 from utils.args import get_parser
 from utils.model import method_wrapper_dict
 from data_provider.dataset_iclucr import UCRDataset
+from data_provider.dataset_tse import TimeSeriesExamDataset
 from data_provider.icl_dataset import ICLUCRDataset, collate_icl
 from evaluations.icl_ucr_eval import run_evaluation_icl_ucr
 from loggers import setup_logger
@@ -44,12 +45,25 @@ def main():
     # ------------------------------------------------------------------
     # Load dataset
     # ------------------------------------------------------------------
-    dataset_name = args.task_id.replace("ICL_UCR_", "").replace("icl_ucr_", "")
-    ucr_path = os.path.join(args.data_path, "Univariate_arff", dataset_name)
-
-    print(f"Loading UCR dataset: {dataset_name}")
-    train_ds = UCRDataset(ucr_path, split="train")
-    test_ds = UCRDataset(ucr_path, split="test")
+    if args.task_id.startswith("icl_tse_"):
+        tid = int(args.task_id.replace("icl_tse_", ""))
+        tse_data_path = getattr(args, "tse_data_path", "qa_dataset_augmented.json")
+        tse_test_fraction = getattr(args, "tse_test_fraction", 0.3)
+        print(f"Loading TimeSeriesExam template tid={tid} from {tse_data_path}")
+        train_ds = TimeSeriesExamDataset(
+            tse_data_path, tid, split="train",
+            test_fraction=tse_test_fraction, seed=args.random_seed,
+        )
+        test_ds = TimeSeriesExamDataset(
+            tse_data_path, tid, split="test",
+            test_fraction=tse_test_fraction, seed=args.random_seed,
+        )
+    else:
+        dataset_name = args.task_id.replace("ICL_UCR_", "").replace("icl_ucr_", "")
+        ucr_path = os.path.join(args.data_path, "Univariate_arff", dataset_name)
+        print(f"Loading UCR dataset: {dataset_name}")
+        train_ds = UCRDataset(ucr_path, split="train")
+        test_ds = UCRDataset(ucr_path, split="test")
 
     print("Building ICL prompts...")
     icl_dataset = ICLUCRDataset.from_ucr_dataset(
