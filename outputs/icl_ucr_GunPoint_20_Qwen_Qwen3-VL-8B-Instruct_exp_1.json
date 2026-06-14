@@ -1,0 +1,47 @@
+{
+  "args": {
+    "exp_id": "1",
+    "random_seed": 0,
+    "project": "aviramom-/ts-icl",
+    "use_wandb": 0,
+    "override_run": 1,
+    "keys_to_match": [
+      "exp_id",
+      "random_seed",
+      "task_id",
+      "method"
+    ],
+    "method": "Qwen/Qwen3-VL-8B-Instruct",
+    "model_path": "",
+    "cache_dir": "/cs/azencot_fsas/aviramom",
+    "quantization": "none",
+    "device": "cuda",
+    "low_cpu_mem_usage": true,
+    "data_path": "/cs/azencot_fsas/multimodal_ts/datasets/",
+    "num_samples": 20,
+    "task_id": "icl_ucr_GunPoint",
+    "picking_strategy": "random",
+    "num_shots": 1,
+    "use_label_desc": 0,
+    "desc_dir": "ucr_descriptions",
+    "batch_size": 1,
+    "display_samples": 3,
+    "model_type": "qwen_vl_image",
+    "max_seq_length": 4096,
+    "max_new_tokens": 50,
+    "format": "chat",
+    "input_mode": "separate"
+  },
+  "results": {
+    "num_of_classes": 2,
+    "total_test_size": 20,
+    "num_test_samples": 20,
+    "balanced_accuracy": 0.7727272727272727,
+    "f1_macro": 0.7442455242966752,
+    "f1_weighted": 0.7404092071611255,
+    "precision_macro": 0.8214285714285714,
+    "recall_macro": 0.7727272727272727,
+    "precision_weighted": 0.8392857142857142,
+    "recall_weighted": 0.75
+  }
+}

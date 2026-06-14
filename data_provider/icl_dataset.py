@@ -105,13 +105,14 @@ class ICLUCRDataset(Dataset):
 
     @staticmethod
     def _load_description(train_dataset, task_id: str, args) -> str:
-        if getattr(args, "use_label_desc", 0):
-            name = task_id.replace("ICL_UCR_", "").replace("icl_ucr_", "")
-            desc_dir = getattr(args, "desc_dir", "ucr_descriptions")
-            desc_path = os.path.join(desc_dir, name, "description.txt")
-            if os.path.isfile(desc_path):
-                with open(desc_path, encoding="utf-8") as f:
-                    return f.read().strip()
+        if not getattr(args, "use_label_desc", 0):
+            return ""
+        name = task_id.replace("ICL_UCR_", "").replace("icl_ucr_", "")
+        desc_dir = getattr(args, "desc_dir", "ucr_descriptions")
+        desc_path = os.path.join(desc_dir, name, "description.txt")
+        if os.path.isfile(desc_path):
+            with open(desc_path, encoding="utf-8") as f:
+                return f.read().strip()
         return getattr(train_dataset, "desc", "") or ""
 
     @staticmethod

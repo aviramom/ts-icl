@@ -101,7 +101,6 @@ class APIModelWrapper(BaseModelWrapper):
             "timeout": 30,
             "base_url": "https://api.siliconflow.com/v1",  # used for DeepSeek (SiliconFlow),
             "model_type": "api",
-            "device": "cpu",
             "input_mode": "combined",
             "llm_id": "qwen3:235b",
             "ollama_url": "https://cis-ollama/api/chat",

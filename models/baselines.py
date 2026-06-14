@@ -25,7 +25,6 @@ class RandomBaseline(BaseModelWrapper):
     def get_args_dict() -> Dict[str, Any]:
         return {
             "model_type": "random_baseline",
-            "device": "cpu",
             "max_seq_length": 4096,
             "max_new_tokens": 10,
             "format": "chat",
@@ -66,7 +65,6 @@ class KNNBaseline(BaseModelWrapper):
     def get_args_dict() -> Dict[str, Any]:
         return {
             "model_type": "knn_baseline",
-            "device": "cpu",
             "max_seq_length": 4096,
             "max_new_tokens": 10,
             "format": "chat",
@@ -311,7 +309,6 @@ class DinoKNNBaseline(BaseModelWrapper):
     def get_args_dict() -> Dict[str, Any]:
         return {
             "model_type": "dino_knn_baseline",
-            "device": "cuda",
             "max_seq_length": 4096,
             "max_new_tokens": 10,
             "format": "chat",
@@ -438,7 +435,6 @@ class DinoKNNCLSABaseline(BaseModelWrapper):
     def get_args_dict() -> Dict[str, Any]:
         return {
             "model_type": "dino_knn_clsa",
-            "device": "cuda",
             "max_seq_length": 4096,
             "max_new_tokens": 10,
             "format": "chat",
