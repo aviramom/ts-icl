@@ -16,6 +16,7 @@ slurm-*.out
 # Experiment outputs and W&B artifacts
 outputs/
 wandb/
+*.parquet
 
 # Generated data (run scripts/generate_tse_augmented.py to recreate)
 qa_dataset_augmented.json
