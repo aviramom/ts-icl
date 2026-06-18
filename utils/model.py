@@ -4,6 +4,8 @@ from models.base_model import BaseModelWrapper
 from models.instruct_model import InstructModel, LargeInstructModel
 from models.image_instruct_model import ImageInstructModel
 from models.qwen_vl_image_model import QwenVLImageModel
+from models.qwen_vl_thinking_model import QwenVLThinkingModel
+from models.qwen_vl_thinking_vllm_model import QwenVLThinkingVLLMModel
 from models.api_model import APIModelWrapper
 
 try:
@@ -40,6 +42,8 @@ method_wrapper_dict: Dict[str, BaseModelWrapper] = {
     # --- Vision LLMs (input_mode="separate": receive <ts><ts/> placeholders) ---
     "Qwen/Qwen3.6-27B-image-ts": ImageInstructModel,   # TS → matplotlib plot, vLLM
     "Qwen/Qwen3-VL-8B-Instruct": QwenVLImageModel,     # TS → matplotlib plot, HF
+    "Qwen/Qwen3-VL-8B-Thinking": QwenVLThinkingModel,         # TS → plot, HF, thinking enabled
+    "Qwen/Qwen3-VL-8B-Thinking-vllm": QwenVLThinkingVLLMModel,  # TS → plot, vLLM, thinking enabled
 
     # --- ChatTS (input_mode="separate": patch-embedding TS tokens) ---
     "bytedance-research/ChatTS-8B": ChatTSHFWrapper,

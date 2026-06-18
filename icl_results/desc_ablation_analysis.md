@@ -115,6 +115,12 @@ Return ONLY the label as one of: [A, B, C] without any explanation
 
 **Descriptions significantly hurt QwenVL on UCR. ChatTS effect is directionally negative but non-significant.**
 
+### UCR — Accuracy by Number of Classes
+
+![Accuracy by Number of Classes](ucr_acc_by_nclasses.png)
+
+Mean balanced accuracy (± 1 SE, shaded) vs number of classes for both conditions; semi-transparent dots are individual datasets. Both models show the expected drop in accuracy as class count rises (harder problem), but the two lines track each other closely throughout — **the gap between No Desc and With Desc does not widen at higher class counts**. A Spearman test on Δ vs raw class count gives ρ ≈ +0.13, p ≈ 0.15 (n.s.) for both models, ruling out context length (more classes → longer prompt) as the primary explanation for the description penalty.
+
 ---
 
 ## TSE — 94 Templates (4 failed: tids 64, 68, 73, 74)

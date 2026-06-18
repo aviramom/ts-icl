@@ -24,6 +24,9 @@ qa_dataset_augmented.json
 # Third-party repos (should be a git submodule — ignored for now)
 third_party/
 
+# Downloaded model weights (use cache_dir on the cluster instead)
+models--*/
+
 # Jupyter checkpoints
 .ipynb_checkpoints/
 

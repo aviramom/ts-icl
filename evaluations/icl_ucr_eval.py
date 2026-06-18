@@ -6,20 +6,52 @@ from tqdm import tqdm
 from sklearn.metrics import balanced_accuracy_score, f1_score, precision_score, recall_score
 
 def _extract_predicted_label(response: str, options: list) -> str:
-    """Return the first option that the response matches via the scoring rules, or response as fallback."""
+    """Return the option that best matches the response, or INVALID_PREDICTION.
+
+    For thinking-mode models the answer section can contain long reasoning text before
+    the final label.  We therefore collect the LAST position at which each option is
+    found under any pattern and return the option whose last match is latest in the
+    string — that is the model's final answer, not a label it mentioned in passing.
+    """
+    if response == "":
+        return "INVALID_PREDICTION"
+
+    # Exact match (short, clean response) — fast path
     for opt in options:
         if response == opt:
             return opt
-        if f'The class is {opt}' in response or f'The class is <{opt}>' in response:
+
+    patterns = [
+        lambda o: [(m.start(), o) for m in re.finditer(
+            r'The class is\s+' + re.escape(o) + r'(?!\w)', response, re.IGNORECASE)],
+        lambda o: [(m.start(), o) for m in re.finditer(
+            r'The class is\s+<' + re.escape(o) + r'>', response, re.IGNORECASE)],
+        lambda o: [(m.start(), o) for m in re.finditer(
+            r'Predicted\s*Label\s*:\s*["\'<\[]?\s*' + re.escape(o) + r'(?!\d)', response, re.IGNORECASE)],
+        lambda o: [(m.start(), o) for m in re.finditer(
+            r'Predicted\s*:\s*["\'<\[]?\s*' + re.escape(o) + r'(?!\d)', response, re.IGNORECASE)],
+        lambda o: [(m.start(), o) for m in re.finditer(
+            r'(?<!\w)label\s*:\s*["\'<\[]?\s*' + re.escape(o) + r'(?!\d)', response, re.IGNORECASE)],
+        lambda o: [(m.start(), o) for m in re.finditer(
+            r'(?:correct\s+)?label\s+is\s+["\'<\[]?\s*' + re.escape(o) + r'(?!\d)', response, re.IGNORECASE)],
+    ]
+
+    all_hits = []  # (position, option)
+    for pat in patterns:
+        for opt in options:
+            all_hits.extend(pat(opt))
+
+    if all_hits:
+        # Return the option whose last match appears latest — the final answer
+        _, best_opt = max(all_hits, key=lambda x: x[0])
+        return best_opt
+
+    # Fallback: look for a bare option token in the last 300 chars
+    tail = response[-300:]
+    for opt in options:
+        if re.search(r'(?<!\w)' + re.escape(opt) + r'(?!\w)', tail):
             return opt
-        if re.search(r'Predicted\s*Label\s*:\s*["\'<\[]?\s*' + re.escape(opt) + r'(?!\d)', response, re.IGNORECASE):
-            return opt
-        if re.search(r'Predicted\s*:\s*["\'<\[]?\s*' + re.escape(opt) + r'(?!\d)', response, re.IGNORECASE):
-            return opt
-        if re.search(r'(?<!\w)label\s*:\s*["\'<\[]?\s*' + re.escape(opt) + r'(?!\d)', response, re.IGNORECASE):
-            return opt
-        if re.search(r'(?:correct\s+)?label\s+is\s+["\'<\[]?\s*' + re.escape(opt) + r'(?!\d)', response, re.IGNORECASE):
-            return opt
+
     return "INVALID_PREDICTION"
 
 
