@@ -115,8 +115,16 @@ def main():
     os.makedirs("outputs", exist_ok=True)
     model_tag = args.method.replace("/", "_").replace(".", "v")
     out_path = f"outputs/{args.task_id}_{args.num_samples}_{model_tag}_exp_{args.exp_id}.json"
+    predictions = [
+        {
+            "gold": input_output["gold_answers"][i],
+            "predicted": input_output["predicted_answers"][i],
+            "raw_output": input_output["generated_texts"][i],
+        }
+        for i in range(len(input_output["gold_answers"]))
+    ]
     with open(out_path, "w") as f:
-        json.dump({"args": vars(args), "results": loggable}, f, indent=2, default=str)
+        json.dump({"args": vars(args), "results": loggable, "predictions": predictions}, f, indent=2, default=str)
     print(f"\nSaved results to {out_path}")
 
     logger.close()

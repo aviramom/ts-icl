@@ -34,6 +34,9 @@ def _extract_predicted_label(response: str, options: list) -> str:
             r'(?<!\w)label\s*:\s*["\'<\[]?\s*' + re.escape(o) + r'(?!\d)', response, re.IGNORECASE)],
         lambda o: [(m.start(), o) for m in re.finditer(
             r'(?:correct\s+)?label\s+is\s+["\'<\[]?\s*' + re.escape(o) + r'(?!\d)', response, re.IGNORECASE)],
+        # Official TSE MCQ format: "A) Linear" — match option letter followed by closing paren
+        lambda o: [(m.start(), o) for m in re.finditer(
+            r'(?<!\w)' + re.escape(o) + r'\)', response)],
     ]
 
     all_hits = []  # (position, option)
@@ -83,7 +86,12 @@ def run_evaluation_icl_ucr(model, dataloader=None, args=None):
             answer = str(batch["output_text"][i]).strip()
             response = str(gen_out[i]).strip()
 
-            options = _parse_options(batch_prompts[i])
+            # Prefer the batch's own options list (works for tse_official which has no "Return ONLY" line).
+            batch_options = batch.get("options")
+            if batch_options and batch_options[i]:
+                options = list(batch_options[i])
+            else:
+                options = _parse_options(batch_prompts[i])
             predicted = _extract_predicted_label(response, options)
 
             accuracy_scores.append(1 if predicted == answer else 0)
@@ -114,11 +122,12 @@ def run_evaluation_icl_ucr(model, dataloader=None, args=None):
 
 
 
-    input_output = { 
+    input_output = {
         "questions": questions,
         "generated_texts": generated_texts,
+        "predicted_answers": predicted_answers,
         "gold_answers": gold_answers,
-        "input_ts": input_ts
+        "input_ts": input_ts,
     }
 
     return results, input_output

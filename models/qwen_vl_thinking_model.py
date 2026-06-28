@@ -37,8 +37,8 @@ class QwenVLThinkingModel(BaseModelWrapper):
     def get_args_dict() -> Dict[str, Any]:
         return {
             "model_type": "qwen_vl_thinking",
-            "max_seq_length": 4096,
-            "max_new_tokens": 4096,
+            "max_seq_length": 2048,    # 1-shot input is ~700 tokens; 2048 gives safe headroom
+            "max_new_tokens": 8192,    # thinking_budget=2048 + answer; 4096 was exhausted by thinking alone
             "thinking_budget": 2048,   # 512 was too small — model reopens reasoning in answer section
             "format": "chat",
             "input_mode": "separate",
@@ -110,10 +110,13 @@ class QwenVLThinkingModel(BaseModelWrapper):
                 if idx < n_expected:
                     content.append({"type": "image", "image": pil_images[idx]})
 
-            messages = [{"role": "user", "content": content}]
+            budget = getattr(self.args, "thinking_budget", 2048)
+            messages = [
+                {"role": "system", "content": f"You are a helpful assistant. Think for at most {budget} tokens before answering."},
+                {"role": "user", "content": content},
+            ]
 
             # ── 5. Apply chat template with thinking enabled ──
-            budget = getattr(self.args, "thinking_budget", 1024)
             try:
                 text = self.processor.apply_chat_template(
                     messages,
@@ -142,7 +145,10 @@ class QwenVLThinkingModel(BaseModelWrapper):
                 output_ids = self.model.generate(
                     **inputs,
                     max_new_tokens=max_tok,
-                    do_sample=False,
+                    do_sample=True,
+                    temperature=1.0,
+                    top_p=0.95,
+                    top_k=20,
                 )
 
             generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
@@ -150,15 +156,27 @@ class QwenVLThinkingModel(BaseModelWrapper):
             # (they are special tokens in Qwen3-VL and would otherwise be stripped silently)
             response = self.processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
 
-            # Strip thinking block — the split is load-bearing; if </think> is absent the
-            # model ran out of tokens mid-think and produced no answer
+            # Strip thinking block and special tokens. Two failure modes handled:
+            # - No </think>: model hit max_new_tokens mid-thought → use last 400 chars of thinking.
+            # - </think> present but answer empty: EOS fired right after </think> → fall back
+            #   to last 400 chars of the thinking block (conclusion is typically written there).
+            _special = ("<|im_end|>", "<|endoftext|>", "<|im_start|>")
             if "</think>" in response:
-                response = response.split("</think>", 1)[1]
+                think_block, answer = response.split("</think>", 1)
+                for tok in _special:
+                    answer = answer.replace(tok, "")
+                answer = answer.strip()
+                if answer:
+                    response = answer
+                else:
+                    for tok in _special:
+                        think_block = think_block.replace(tok, "")
+                    response = think_block[-400:].strip()
+            else:
+                for tok in _special:
+                    response = response.replace(tok, "")
+                response = response[-400:].strip()
 
-            # Remove Qwen turn-end special tokens that appear with skip_special_tokens=False
-            for tok in ("<|im_end|>", "<|endoftext|>", "<|im_start|>"):
-                response = response.replace(tok, "")
-
-            results.append(response.strip())
+            results.append(response)
 
         return results

@@ -6,7 +6,7 @@
 ################################################################################################
 
 #SBATCH --partition main
-#SBATCH --time 0-00:20:00
+#SBATCH --time 0-00:45:00
 #SBATCH --job-name qwenvl8b_thinking_vllm_smoke
 #SBATCH --output logs_terminal/qwenvl8b_thinking_vllm_smoke_%J.out
 #SBATCH --gpus=rtx_4090:1
@@ -33,9 +33,10 @@ python run_icl.py \
   --method Qwen/Qwen3-VL-8B-Thinking-vllm \
   --num_shots 1 \
   --picking_strategy random \
-  --num_samples 20 \
+  --num_samples 10 \
   --random_seed 0 \
   --batch_size 1 \
+  --max_seq_length 2048 \
   --max_new_tokens 8192 \
   --thinking_budget 2048 \
   --cache_dir /cs/azencot_fsas/aviramom \

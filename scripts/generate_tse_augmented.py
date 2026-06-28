@@ -38,6 +38,14 @@ def clean_option_name(name: str) -> str:
     return name
 
 
+def _enforce_length(arr, n):
+    """Truncate or zero-pad arr to exactly n elements."""
+    arr = list(arr)
+    if len(arr) >= n:
+        return arr[:n]
+    return arr + [0.0] * (n - len(arr))
+
+
 def _generate_single_ts(option, template_noise, ts_length):
     """Generate one single-TS sample for an Option."""
     from utils.utils import get_ts_obj_from_option, calculate_noise_level
@@ -52,7 +60,7 @@ def _generate_single_ts(option, template_noise, ts_length):
     if hasattr(ts_obj, "transformations"):
         for t in ts_obj.transformations:
             ts = t.transform(ts)
-    return ts.tolist()
+    return _enforce_length(ts, ts_length)
 
 
 def _generate_two_ts(option, template_noise, ts_length):
@@ -85,7 +93,7 @@ def _generate_two_ts(option, template_noise, ts_length):
             noise = template_noise(noise_level=nl).generate(ts_length)
             ts1, ts2 = ts1 + noise, ts2 + noise
 
-    return [ts1.tolist(), ts2.tolist()]
+    return [_enforce_length(ts1, ts_length), _enforce_length(ts2, ts_length)]
 
 
 def generate_variants_for_template(template, num_variants, ts_length, base_seed):

@@ -44,8 +44,8 @@ class QwenVLThinkingVLLMModel(BaseModelWrapper):
     def get_args_dict() -> Dict[str, Any]:
         return {
             "model_type": "qwen_vl_thinking_vllm",
-            "max_seq_length": 4096,
-            "max_new_tokens": 8192,
+            "max_seq_length": 2048,    # 1-shot input is ~700 tokens; 2048 gives safe headroom
+            "max_new_tokens": 8192,    # thinking_budget=2048 + answer; 4096 was exhausted by thinking alone
             "thinking_budget": 2048,   # soft hint; 512 is too small — model reopens reasoning after </think>
             "format": "chat",
             "input_mode": "separate",
@@ -103,7 +103,9 @@ class QwenVLThinkingVLLMModel(BaseModelWrapper):
         # skip_special_tokens=False: <think>/<\think> are special tokens in Qwen3-VL
         # and would be silently stripped otherwise, making the </think> split impossible
         sampling_params = SamplingParams(
-            temperature=0.0,
+            temperature=1.0,
+            top_p=0.95,
+            top_k=20,
             max_tokens=max_tok,
             skip_special_tokens=False,
         )
@@ -137,33 +139,39 @@ class QwenVLThinkingVLLMModel(BaseModelWrapper):
                     content.append({"type": "image"})
 
             # ── 5. Apply chat template with thinking enabled ──
+            # Qwen3-VL accepts thinking_budget via apply_chat_template but silently ignores
+            # it on some processor versions (no TypeError, budget just not injected).
+            # We therefore also prepend a system message with the plaintext budget hint,
+            # which the model was instruction-tuned to respect.
+            messages = [
+                {"role": "system", "content": f"You are a helpful assistant. Think for at most {budget} tokens before answering."},
+                {"role": "user", "content": content},
+            ]
             try:
                 prompt = self.processor.apply_chat_template(
-                    [{"role": "user", "content": content}],
+                    messages,
                     tokenize=False,
                     add_generation_prompt=True,
                     enable_thinking=True,
                     thinking_budget=budget,
                 )
             except TypeError:
-                # Fallback: thinking_budget not supported by this processor version;
-                # keep enable_thinking=True so reasoning still runs (just uncapped)
                 try:
                     prompt = self.processor.apply_chat_template(
-                        [{"role": "user", "content": content}],
+                        messages,
                         tokenize=False,
                         add_generation_prompt=True,
                         enable_thinking=True,
                     )
                 except TypeError:
                     prompt = self.processor.apply_chat_template(
-                        [{"role": "user", "content": content}],
+                        messages,
                         tokenize=False,
                         add_generation_prompt=True,
                     )
 
             if len(vllm_inputs) == 0:
-                budget_in_prompt = "budget" in prompt.lower() or str(budget) in prompt
+                budget_in_prompt = str(budget) in prompt or "think for at most" in prompt.lower()
                 print(f"[QwenVLThinking] thinking_budget={budget} injected={budget_in_prompt} | prompt tail: {repr(prompt[-120:])}")
             vllm_inputs.append({
                 "prompt": prompt,
@@ -175,11 +183,22 @@ class QwenVLThinkingVLLMModel(BaseModelWrapper):
 
 
 def _extract_answer(text: str) -> str:
-    """Strip thinking block and Qwen turn-end tokens, return just the label."""
-    if "</think>" not in text:
-        # Model hit max_new_tokens mid-thought without finishing; no answer produced.
-        return ""
-    text = text.split("</think>", 1)[1]
+    """Strip thinking block and Qwen turn-end tokens, return just the label.
+
+    Two failure modes are handled:
+    - No </think>: model hit max_new_tokens mid-thought → return last 400 chars of thinking.
+    - </think> present but empty answer: EOS fired immediately after </think> (model wrote
+      its conclusion inside the thinking block then stopped) → fall back to last 400 chars
+      of the thinking block, which typically contains the final reasoning step.
+    """
     for tok in _QWEN_SPECIAL_TOKENS:
         text = text.replace(tok, "")
-    return text.strip()
+
+    if "</think>" not in text:
+        return text[-400:].strip()
+
+    think_block, answer = text.split("</think>", 1)
+    answer = answer.strip()
+    if answer:
+        return answer
+    return think_block[-400:].strip()

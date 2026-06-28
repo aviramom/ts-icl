@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Exp: description ablation — Qwen3-VL-8B with thinking enabled — all 122 UCR datasets
+# Exp: description ablation — Qwen3-VL-8B with thinking enabled — 94 UCR datasets
 # Hypothesis: the thinking model may use domain descriptions more effectively than the
 # instruct model (which showed descriptions hurt or gave no benefit in desc_ablation_full).
 #
@@ -12,7 +12,11 @@
 # Seeds: 3 (0, 3, 6). num_samples: 150. strategy: random, k=1.
 # thinking_budget=2048: soft hint for thinking length (512 caused reasoning to spill into answer).
 # max_new_tokens=8192: hard ceiling covering thinking + answer.
-# Total jobs: 1 model × 2 conditions × 3 seeds × 122 tasks = 732
+# max_seq_length=2048: safe for this dataset set (all ≤12 classes → ≤13 images → ~3,350 tokens).
+#   122-dataset set excluded: large-class datasets (FiftyWords/50, ShapesAll/60, Adiac/37 etc.)
+#   blow the vLLM max_model_len hard limit and crash the job. 94-dataset set was specifically
+#   curated to fit all image-based models.
+# Total jobs: 1 model × 2 conditions × 3 seeds × 94 tasks = 564
 
 SCRIPT_DIR="$(dirname "$0")"
 
@@ -23,6 +27,7 @@ batch_size=1
 strategy="random"
 k_shots=1
 num_samples=150
+max_seq_length=2048    # 1-shot input is ~700 tokens; 2048 is safe headroom
 max_new_tokens=8192
 thinking_budget=2048   # 512 caused premature </think> before model reached a conclusion
 
@@ -31,8 +36,7 @@ methods=( "Qwen/Qwen3-VL-8B-Thinking-vllm" )
 seeds=(0 3 6)
 
 tasks=(
-    # --- Image / Shape ---
-    "icl_ucr_Adiac"
+    # --- Image / Shape (27) ---
     "icl_ucr_ArrowHead"
     "icl_ucr_BeetleFly"
     "icl_ucr_BirdChicken"
@@ -43,118 +47,83 @@ tasks=(
     "icl_ucr_FaceAll"
     "icl_ucr_FaceFour"
     "icl_ucr_FacesUCR"
-    "icl_ucr_FiftyWords"
     "icl_ucr_Fish"
-    "icl_ucr_HandOutlines"
     "icl_ucr_Herring"
     "icl_ucr_MedicalImages"
     "icl_ucr_MiddlePhalanxOutlineAgeGroup"
     "icl_ucr_MiddlePhalanxOutlineCorrect"
     "icl_ucr_MiddlePhalanxTW"
-    "icl_ucr_MixedShapesRegularTrain"
-    "icl_ucr_MixedShapesSmallTrain"
     "icl_ucr_OSULeaf"
     "icl_ucr_PhalangesOutlinesCorrect"
     "icl_ucr_ProximalPhalanxOutlineAgeGroup"
     "icl_ucr_ProximalPhalanxOutlineCorrect"
     "icl_ucr_ProximalPhalanxTW"
-    "icl_ucr_ShapesAll"
     "icl_ucr_SwedishLeaf"
     "icl_ucr_Symbols"
-    "icl_ucr_WordSynonyms"
     "icl_ucr_Yoga"
     "icl_ucr_Crop"
-
-    # --- Sensor / Device ---
-    "icl_ucr_ACSF1"
-    "icl_ucr_BME"
+    "icl_ucr_MixedShapesRegularTrain"
+    "icl_ucr_MixedShapesSmallTrain"
+    # --- Sensor / Device (36) ---
     "icl_ucr_Car"
-    "icl_ucr_Chinatown"
     "icl_ucr_ChlorineConcentration"
     "icl_ucr_Computers"
+    "icl_ucr_Earthquakes"
+    "icl_ucr_ElectricDevices"
+    "icl_ucr_FordA"
+    "icl_ucr_FordB"
+    "icl_ucr_ItalyPowerDemand"
+    "icl_ucr_LargeKitchenAppliances"
+    "icl_ucr_Lightning2"
+    "icl_ucr_Lightning7"
+    "icl_ucr_MoteStrain"
+    "icl_ucr_Plane"
+    "icl_ucr_RefrigerationDevices"
+    "icl_ucr_ScreenType"
+    "icl_ucr_SmallKitchenAppliances"
+    "icl_ucr_SonyAIBORobotSurface1"
+    "icl_ucr_SonyAIBORobotSurface2"
+    "icl_ucr_StarLightCurves"
+    "icl_ucr_Trace"
+    "icl_ucr_Wafer"
+    "icl_ucr_BME"
+    "icl_ucr_Chinatown"
     "icl_ucr_DodgerLoopDay"
     "icl_ucr_DodgerLoopGame"
     "icl_ucr_DodgerLoopWeekend"
-    "icl_ucr_Earthquakes"
-    "icl_ucr_ElectricDevices"
-    "icl_ucr_EthanolLevel"
-    "icl_ucr_FordA"
-    "icl_ucr_FordB"
     "icl_ucr_FreezerRegularTrain"
     "icl_ucr_FreezerSmallTrain"
     "icl_ucr_HouseTwenty"
     "icl_ucr_InsectEPGRegularTrain"
     "icl_ucr_InsectEPGSmallTrain"
     "icl_ucr_InsectWingbeatSound"
-    "icl_ucr_ItalyPowerDemand"
-    "icl_ucr_LargeKitchenAppliances"
-    "icl_ucr_Lightning2"
-    "icl_ucr_Lightning7"
     "icl_ucr_MelbournePedestrian"
-    "icl_ucr_MoteStrain"
-    "icl_ucr_Plane"
     "icl_ucr_PowerCons"
-    "icl_ucr_RefrigerationDevices"
-    "icl_ucr_Rock"
-    "icl_ucr_ScreenType"
     "icl_ucr_SemgHandGenderCh2"
-    "icl_ucr_SemgHandMovementCh2"
-    "icl_ucr_SemgHandSubjectCh2"
-    "icl_ucr_SmallKitchenAppliances"
     "icl_ucr_SmoothSubspace"
-    "icl_ucr_SonyAIBORobotSurface1"
-    "icl_ucr_SonyAIBORobotSurface2"
-    "icl_ucr_StarLightCurves"
-    "icl_ucr_Trace"
-    "icl_ucr_Wafer"
-
-    # --- Motion / HAR ---
-    "icl_ucr_AllGestureWiimoteX"
-    "icl_ucr_AllGestureWiimoteY"
-    "icl_ucr_AllGestureWiimoteZ"
+    # --- Motion / HAR (16) ---
     "icl_ucr_CricketX"
     "icl_ucr_CricketY"
     "icl_ucr_CricketZ"
-    "icl_ucr_Fungi"
     "icl_ucr_GunPoint"
     "icl_ucr_GunPointAgeSpan"
     "icl_ucr_GunPointMaleVersusFemale"
     "icl_ucr_GunPointOldVersusYoung"
-    "icl_ucr_Haptics"
-    "icl_ucr_InlineSkate"
-    "icl_ucr_PickupGestureWiimoteZ"
-    "icl_ucr_ShakeGestureWiimoteZ"
     "icl_ucr_ShapeletSim"
     "icl_ucr_ToeSegmentation1"
     "icl_ucr_ToeSegmentation2"
-    "icl_ucr_UWaveGestureLibraryAll"
     "icl_ucr_UWaveGestureLibraryX"
     "icl_ucr_UWaveGestureLibraryY"
     "icl_ucr_UWaveGestureLibraryZ"
     "icl_ucr_Worms"
     "icl_ucr_WormsTwoClass"
-    # Variable-length (cannot load as fixed-length ARFF — skipped):
-    # "icl_ucr_GestureMidAirD1"
-    # "icl_ucr_GestureMidAirD2"
-    # "icl_ucr_GestureMidAirD3"
-    # "icl_ucr_GesturePebbleZ1"
-    # "icl_ucr_GesturePebbleZ2"
-
-    # --- ECG / Medical ---
-    "icl_ucr_CinCECGTorso"
+    "icl_ucr_Fungi"
+    # --- ECG / Medical (4) ---
     "icl_ucr_ECG200"
     "icl_ucr_ECG5000"
     "icl_ucr_ECGFiveDays"
-    "icl_ucr_EOGHorizontalSignal"
-    "icl_ucr_EOGVerticalSignal"
-    "icl_ucr_NonInvasiveFetalECGThorax1"
-    "icl_ucr_NonInvasiveFetalECGThorax2"
-    "icl_ucr_PigAirwayPressure"
-    "icl_ucr_PigArtPressure"
-    "icl_ucr_PigCVP"
     "icl_ucr_TwoLeadECG"
-
-    # --- Spectrographic / Chemometrics ---
+    # --- Spectrographic / Chemometrics (7) ---
     "icl_ucr_Beef"
     "icl_ucr_Coffee"
     "icl_ucr_Ham"
@@ -162,16 +131,11 @@ tasks=(
     "icl_ucr_OliveOil"
     "icl_ucr_Strawberry"
     "icl_ucr_Wine"
-
-    # --- Simulated / Synthetic ---
+    # --- Simulated / Synthetic (4) ---
     "icl_ucr_CBF"
-    "icl_ucr_Mallat"
-    "icl_ucr_Phoneme"
     "icl_ucr_SyntheticControl"
     "icl_ucr_TwoPatterns"
     "icl_ucr_UMD"
-    # Variable-length (cannot load as fixed-length ARFF — skipped):
-    # "icl_ucr_PLAID"
 )
 
 # ── Condition A: no description ───────────────────────────────────────────────
@@ -192,6 +156,7 @@ do
                 --picking_strategy "$strategy" \
                 --num_shots "$k_shots" \
                 --num_samples "$num_samples" \
+                --max_seq_length "$max_seq_length" \
                 --max_new_tokens "$max_new_tokens" \
                 --thinking_budget "$thinking_budget" \
                 --random_seed "$seed" \
@@ -219,6 +184,7 @@ do
                 --picking_strategy "$strategy" \
                 --num_shots "$k_shots" \
                 --num_samples "$num_samples" \
+                --max_seq_length "$max_seq_length" \
                 --max_new_tokens "$max_new_tokens" \
                 --thinking_budget "$thinking_budget" \
                 --random_seed "$seed" \

@@ -70,6 +70,7 @@ class TimeSeriesExamDataset(Dataset):
         opt_lines = "\n".join(
             f"{letter}) {text}" for letter, text in zip(letters, option_names)
         )
+        self.question: str = q
         self.desc: str = f"Question: {q}\n\nOptions:\n{opt_lines}"
 
         # Split variants into train / test

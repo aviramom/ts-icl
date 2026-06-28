@@ -38,9 +38,12 @@ class RandomBaseline(BaseModelWrapper):
         prompts = batch["input_text"]
         if isinstance(prompts, str):
             prompts = [prompts]
+        batch_options = batch.get("options", [])
         results = []
-        for prompt in prompts:
+        for i, prompt in enumerate(prompts):
             options = self._parse_options(prompt)
+            if not options and batch_options and i < len(batch_options):
+                options = list(batch_options[i]) if batch_options[i] else []
             chosen = self.rng.choice(options) if options else ""
             results.append(str(chosen))
         return results

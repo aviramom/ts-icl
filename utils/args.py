@@ -16,7 +16,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--use_wandb", type=int, default=0)
     parser.add_argument("--override_run", type=int, default=1)
     parser.add_argument("--keys_to_match", type=list,
-                        default=["exp_id", "random_seed", "task_id", "method"])
+                        default=["exp_id", "random_seed", "task_id", "method", "prompt_format"])
 
     # Model
     parser.add_argument("--method", type=str, default="random_baseline")
@@ -50,6 +50,13 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--use_label_desc", type=int, default=0,
                         help="1 = inject domain description.txt into prompt")
     parser.add_argument("--desc_dir", type=str, default="ucr_descriptions")
+    parser.add_argument("--prompt_format", type=str, default=None,
+                        choices=["no_support", "desc_first", "no_desc", "desc_last", "tse_official"],
+                        help="Prompt structure. no_support=zero-shot with question only; "
+                             "desc_first=question then examples then query; "
+                             "no_desc=examples only; "
+                             "desc_last=examples then question then query; "
+                             "tse_official=official TSE MCQ format (zero-shot when --num_shots 0, ICL otherwise)")
 
     # Inference
     parser.add_argument("--batch_size", type=int, default=1)

@@ -41,27 +41,68 @@ class ICLUCRDataset(Dataset):
 
         label_names = getattr(train_dataset, "label_names", None)
         is_two_series = getattr(train_dataset, "is_two_series", False)
+        prompt_format = getattr(args, "prompt_format", None)
+        num_shots = getattr(args, "num_shots", 1)
 
-        examples = get_support_set(
-            train_dataset,
-            strategy=args.picking_strategy,
-            k_shots=args.num_shots,
-            seed=getattr(args, "random_seed", None),
-        )
+        # Determine if this is a zero-shot run (no support examples).
+        is_zeroshot = prompt_format == "no_support" or \
+                      (prompt_format == "tse_official" and num_shots == 0)
 
-        # Map integer labels -> display strings
-        if label_names is not None:
-            examples = [(ts_list, label_names[label]) for ts_list, label in examples]
+        if is_zeroshot:
+            examples = []
+            if label_names is not None:
+                options = label_names
+            else:
+                all_ints = sorted(set(
+                    int(train_dataset[i][1].item()) if hasattr(train_dataset[i][1], "item")
+                    else int(train_dataset[i][1])
+                    for i in range(len(train_dataset))
+                ))
+                options = [str(x) for x in all_ints]
         else:
-            examples = [(ts_list, str(label)) for ts_list, label in examples]
+            examples = get_support_set(
+                train_dataset,
+                strategy=args.picking_strategy,
+                k_shots=num_shots,
+                seed=getattr(args, "random_seed", None),
+            )
+            # Map integer labels -> display strings
+            if label_names is not None:
+                examples = [(ts_list, label_names[label]) for ts_list, label in examples]
+            else:
+                examples = [(ts_list, str(label)) for ts_list, label in examples]
+            options = sorted(set(ex[1] for ex in examples))
 
-        description = self._load_description(train_dataset, task_id, args)
-        options = sorted(set(ex[1] for ex in examples))
-
-        if is_two_series:
-            input_prompt, support_ts_list = self._build_input_two_series(examples, description, options)
+        if prompt_format == "tse_official":
+            # Build official MCQ description from raw question + option texts (bypasses _load_description).
+            option_texts = getattr(train_dataset, "option_texts", None)
+            question = getattr(train_dataset, "question", "")
+            if option_texts and label_names and question:
+                opts_block = "\n".join(f"{l}) {t}" for l, t in zip(label_names, option_texts))
+                description = f"{question}\n\n{opts_block}"
+                letter_to_text = dict(zip(label_names, option_texts))
+            else:
+                description = self._load_description(train_dataset, task_id, args)
+                letter_to_text = {}
+            # Remap example labels to "A) Linear" format for official MCQ answers.
+            examples_official = [
+                (ts, f"{letter}) {letter_to_text.get(letter, letter)}")
+                for ts, letter in examples
+            ]
+            if is_two_series:
+                input_prompt, support_ts_list = self._build_input_tse_official_two_series(
+                    examples_official, description, options)
+            else:
+                input_prompt, support_ts_list = self._build_input_tse_official(
+                    examples_official, description, options)
         else:
-            input_prompt, support_ts_list = self._build_input(examples, description, options)
+            description = self._load_description(train_dataset, task_id, args)
+            if is_two_series:
+                input_prompt, support_ts_list = self._build_input_two_series(
+                    examples, description, options, prompt_format)
+            else:
+                input_prompt, support_ts_list = self._build_input(
+                    examples, description, options, prompt_format)
 
         n = len(test_dataset)
         if getattr(args, "num_samples", None) not in (None, float("inf"), -1):
@@ -128,7 +169,10 @@ class ICLUCRDataset(Dataset):
 
     @staticmethod
     def _load_description(train_dataset, task_id: str, args) -> str:
-        if not getattr(args, "use_label_desc", 0):
+        prompt_format = getattr(args, "prompt_format", None)
+        if prompt_format == "no_desc":
+            return ""
+        if prompt_format is None and not getattr(args, "use_label_desc", 0):
             return ""
         # TSE datasets store question text in self.desc directly
         if task_id.startswith("icl_tse_"):
@@ -142,17 +186,17 @@ class ICLUCRDataset(Dataset):
         return getattr(train_dataset, "desc", "") or ""
 
     @staticmethod
-    def _build_input(examples, desc: str, opts: list):
+    def _build_input(examples, desc: str, opts: list, prompt_format=None):
         text = "\n--- EXAMPLES ---\n"
         ts_list = []
         for i, (ts, label) in enumerate(examples):
             text += f"\nExample {i+1} Time Series: <ts><ts/>\nLabel: {label}\n"
             ts_list.append(ts[0])
-        target = "\n--- TARGET ---\n" + "New Time Series: <ts><ts/>\n"
-        return icl_classification_format(desc, text, target, opts), ts_list
+        target_ts = "New Time Series: <ts><ts/>"
+        return icl_classification_format(desc, text, target_ts, opts, prompt_format), ts_list
 
     @staticmethod
-    def _build_input_two_series(examples, desc: str, opts: list):
+    def _build_input_two_series(examples, desc: str, opts: list, prompt_format=None):
         """Like _build_input but emits two <ts><ts/> placeholders per example."""
         text = "\n--- EXAMPLES ---\n"
         ts_list = []
@@ -168,12 +212,38 @@ class ICLUCRDataset(Dataset):
             )
             ts_list.append(ts1)
             ts_list.append(ts2)
-        target = (
-            "\n--- TARGET ---\n"
-            "New Time Series 1: <ts><ts/>\n"
-            "New Time Series 2: <ts><ts/>\n"
-        )
-        return icl_classification_format(desc, text, target, opts), ts_list
+        target_ts = "New Time Series 1: <ts><ts/>\nNew Time Series 2: <ts><ts/>"
+        return icl_classification_format(desc, text, target_ts, opts, prompt_format), ts_list
+
+    @staticmethod
+    def _build_input_tse_official(examples, desc: str, opts: list):
+        """Official MCQ format: 'Answer: A) Linear' labels, 'Time Series:' target."""
+        text = ""
+        ts_list = []
+        for i, (ts, label_str) in enumerate(examples):
+            text += f"\nExample {i+1} Time Series: <ts><ts/>\nAnswer: {label_str}\n"
+            ts_list.append(ts[0])
+        target_ts = "Time Series: <ts><ts/>"
+        return icl_classification_format(desc, text, target_ts, opts, "tse_official"), ts_list
+
+    @staticmethod
+    def _build_input_tse_official_two_series(examples, desc: str, opts: list):
+        """Official MCQ format for two-series templates."""
+        text = ""
+        ts_list = []
+        for i, (ts, label_str) in enumerate(examples):
+            ts_pair = ts[0]
+            ts1 = ts_pair[0].tolist() if hasattr(ts_pair[0], "tolist") else list(ts_pair[0])
+            ts2 = ts_pair[1].tolist() if hasattr(ts_pair[1], "tolist") else list(ts_pair[1])
+            text += (
+                f"\nExample {i+1} Time Series 1: <ts><ts/>\n"
+                f"Example {i+1} Time Series 2: <ts><ts/>\n"
+                f"Answer: {label_str}\n"
+            )
+            ts_list.append(ts1)
+            ts_list.append(ts2)
+        target_ts = "Time Series 1: <ts><ts/>\nTime Series 2: <ts><ts/>"
+        return icl_classification_format(desc, text, target_ts, opts, "tse_official"), ts_list
 
     @staticmethod
     def _combine_ts_text(input_text: str, ts_list: list) -> str:

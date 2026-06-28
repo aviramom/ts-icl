@@ -20,6 +20,12 @@ except ImportError:
     ChatTSVLLMWrapper = None
     print("ChatTS vLLM model unavailable — vllm not installed")
 
+try:
+    from models.time_omni_model import TimeOmniHFWrapper
+except ImportError:
+    TimeOmniHFWrapper = None
+    print("TimeOmni model unavailable — missing dependency")
+
 from models.baselines import (
     RandomBaseline, KNNBaseline,
     ZeroedTSBaseline, EmptyTSBaseline, EmptyAllTSBaseline,
@@ -28,6 +34,8 @@ from models.baselines import (
 
 method_wrapper_dict: Dict[str, BaseModelWrapper] = {
     # --- Small text LLMs (HF, single RTX 4090) ---
+    "Qwen/Qwen3-8B-Instruct": InstructModel,
+    "Qwen/Qwen3-8B-Instruct-2507": InstructModel,
     "Qwen/Qwen3-4B-Instruct-2507": InstructModel,
     "Qwen/Qwen3-0.6B": InstructModel,
     "Qwen/Qwen2.5-7B-Instruct": InstructModel,
@@ -50,6 +58,9 @@ method_wrapper_dict: Dict[str, BaseModelWrapper] = {
     "bytedance-research/ChatTS-14B": ChatTSHFWrapper,
     "bytedance-research/ChatTS-8B-vllm": ChatTSVLLMWrapper,
     "bytedance-research/ChatTS-14B-vllm": ChatTSVLLMWrapper,
+
+    # --- TimeOmni (text + TS as numeric arrays, Qwen2.5 base) ---
+    "anton-hugging/TimeOmni-1-7B": TimeOmniHFWrapper,
 
     # --- Cloud API models ---
     "openai": APIModelWrapper,
